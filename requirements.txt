@@ -6,3 +6,4 @@ torchsummary
 torchvision
 Pillow
 peft
+bitsandbytes==0.43.3

@@ -10,11 +10,9 @@ import pickle
 model = Blip2ForConditionalGeneration.from_pretrained("Salesforce/blip2-opt-2.7b", load_in_8bit=True)
 
 lora_config = LoraConfig(
-            r=8,
-            lora_alpha=8,
-            lora_dropout=0.1,
-            target_modules="...",
-            init_lora_weights="gaussian",
+    r=8,
+    lora_alpha=8,
+    lora_dropout=0.1
 )
 
 model = prepare_model_for_kbit_training(model)
