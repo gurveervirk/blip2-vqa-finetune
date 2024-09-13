@@ -1,7 +1,5 @@
-import os
-
-import requests
-from transformers import BlipProcessor, BlipForQuestionAnswering
+from transformers import Blip2ForConditionalGeneration, Blip2Processor
+from peft import get_peft_model, LoraConfig, prepare_model_for_kbit_training
 from datasets import load_dataset
 import torch
 from PIL import Image
@@ -9,8 +7,19 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pickle
 
-model = BlipForQuestionAnswering.from_pretrained("Salesforce/blip-vqa-base")
-processor = BlipProcessor.from_pretrained("Salesforce/blip-vqa-base")
+model = Blip2ForConditionalGeneration.from_pretrained("Salesforce/blip2-opt-2.7b", load_in_8bit=True)
+
+lora_config = LoraConfig(
+            r=8,
+            lora_alpha=8,
+            lora_dropout=0.1,
+            target_modules="...",
+            init_lora_weights="gaussian",
+)
+
+model = prepare_model_for_kbit_training(model)
+model = get_peft_model(model, lora_config)
+processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
@@ -32,8 +41,7 @@ class VQADataset(torch.utils.data.Dataset):
         # get image + text
         question = self.dataset[idx]['question']
         answer = self.dataset[idx]['answer']
-        image_id = self.dataset[idx]['pid']
-        image_path = f"Data/train_fill_in_blank/{image_id}/image.png"
+        image_path = self.dataset[idx]['image']
         image = Image.open(image_path).convert("RGB")
         text = question
         
@@ -46,8 +54,8 @@ class VQADataset(torch.utils.data.Dataset):
         for k,v in encoding.items():  encoding[k] = v.squeeze()
         return encoding
 
-training_dataset = load_dataset("json", data_files="Data/train.jsonl", split="train[:90%]")
-valid_dataset = load_dataset("json", data_files="Data/train.jsonl", split="train[90%:]")
+training_dataset = load_dataset("json", data_files="/kaggle/input/amazon-ml-challenge-dataset/train.jsonl", split="train[:90%]")
+valid_dataset = load_dataset("json", data_files="/kaggle/input/amazon-ml-challenge-dataset/train.jsonl", split="train[90%:]")
 print("Training sets: {} - Validating set: {}".format(len(training_dataset), len(valid_dataset)))
 
 train_dataset = VQADataset(dataset=training_dataset,
@@ -63,7 +71,7 @@ valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=Fals
 optimizer = torch.optim.AdamW(model.parameters(), lr=4e-5)
 scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9, last_epoch=-1, verbose=False)
 
-num_epochs = 100
+num_epochs = 3
 patience = 10
 min_eval_loss = float("inf")
 early_stopping_hook = 0
