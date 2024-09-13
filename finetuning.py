@@ -1,5 +1,5 @@
 from transformers import Blip2ForConditionalGeneration, Blip2Processor
-from peft import get_peft_model, LoraConfig, prepare_model_for_kbit_training
+# from peft import get_peft_model, LoraConfig, prepare_model_for_kbit_training
 from datasets import load_dataset
 import torch
 from PIL import Image
@@ -9,14 +9,14 @@ import pickle
 
 model = Blip2ForConditionalGeneration.from_pretrained("Salesforce/blip2-opt-2.7b", load_in_8bit=True)
 
-lora_config = LoraConfig(
-    r=8,
-    lora_alpha=8,
-    lora_dropout=0.1
-)
+# lora_config = LoraConfig(
+#     r=8,
+#     lora_alpha=8,
+#     lora_dropout=0.1
+# )
 
-model = prepare_model_for_kbit_training(model)
-model = get_peft_model(model, lora_config)
+# model = prepare_model_for_kbit_training(model)
+# model = get_peft_model(model, lora_config)
 processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
