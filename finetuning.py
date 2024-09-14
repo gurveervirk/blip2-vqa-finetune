@@ -1,5 +1,5 @@
 from transformers import Blip2ForConditionalGeneration, Blip2Processor
-# from peft import get_peft_model, LoraConfig, prepare_model_for_kbit_training
+from peft import get_peft_model, LoraConfig, prepare_model_for_kbit_training
 from datasets import load_dataset
 import torch
 from PIL import Image
@@ -7,16 +7,16 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 import pickle
 
-model = Blip2ForConditionalGeneration.from_pretrained("Salesforce/blip2-opt-2.7b", load_in_8bit=True)
+model = Blip2ForConditionalGeneration.from_pretrained("Salesforce/blip2-opt-2.7b", load_in_8bit=True, device_map="auto", torch_dtype=torch.float16)
 
-# lora_config = LoraConfig(
-#     r=8,
-#     lora_alpha=8,
-#     lora_dropout=0.1
-# )
+lora_config = LoraConfig(
+    r=8,
+    lora_alpha=8,
+    lora_dropout=0.1
+)
 
-# model = prepare_model_for_kbit_training(model)
-# model = get_peft_model(model, lora_config)
+model = prepare_model_for_kbit_training(model)
+model = get_peft_model(model, lora_config)
 processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -43,9 +43,9 @@ class VQADataset(torch.utils.data.Dataset):
         image = Image.open(image_path).convert("RGB")
         text = question
         
-        encoding = self.processor(image, text, padding="max_length", truncation=True, return_tensors="pt")
+        encoding = self.processor(image, text, max_length=80, padding="max_length", truncation=True, return_tensors="pt")
         labels = self.processor.tokenizer.encode(
-            answer, max_length= 8, pad_to_max_length=True, return_tensors='pt'
+            answer, max_length=32, padding="max_length", return_tensors='pt'
         )
         encoding["labels"] = labels
         # remove batch dimension
